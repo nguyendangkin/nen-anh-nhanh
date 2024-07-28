@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Image Compressor</title>
+        <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@latest/dist/browser-image-compression.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f2f5;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }
+            .container {
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                width: 90%;
+                max-width: 500px;
+                text-align: center;
+            }
+            h1 {
+                margin-bottom: 20px;
+            }
+            input,
+            button {
+                width: 100%;
+                padding: 10px 0;
+                margin: 10px 0;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding-left: 10px;
+            }
+            button {
+                background-color: #4caf50;
+                color: white;
+                border: none;
+                cursor: pointer;
+            }
+            button:disabled {
+                background-color: #ccc;
+                cursor: not-allowed;
+            }
+            .progress-container {
+                background-color: #f3f3f3;
+                border-radius: 4px;
+                margin: 10px 0;
+                height: 30px;
+                width: 100%;
+                overflow: hidden;
+            }
+            .progress-bar {
+                height: 100%;
+                background-color: #4caf50;
+                text-align: center;
+                color: white;
+                line-height: 30px;
+                transition: width 0.4s ease;
+            }
+            .error {
+                color: red;
+            }
+            .instructions {
+                text-align: left;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Nén Ảnh</h1>
+            <input type="file" id="fileInput" />
+            <input
+                type="number"
+                id="desiredSize"
+                placeholder="Kích thước mong muốn (KB)"
+            />
+            <button onclick="compressImage()">Nén Ảnh</button>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div id="error" class="error"></div>
+            <button
+                id="downloadButton"
+                style="display: none"
+                onclick="downloadImage()"
+            >
+                Tải ảnh nén về
+            </button>
+            <div class="instructions">
+                <h2>Hướng dẫn sử dụng:</h2>
+                <p>
+                    1. Chọn ảnh bạn muốn nén bằng cách nhấn vào nút "Chọn ảnh".
+                </p>
+                <p>
+                    2. Nhập kích thước mong muốn (tính bằng KB) vào ô "Kích
+                    thước mong muốn (KB)".
+                </p>
+                <p>3. Nhấn vào nút "Nén Ảnh" để bắt đầu quá trình nén.</p>
+                <p>4. Theo dõi thanh tiến trình để xem tiến độ nén ảnh.</p>
+                <p>
+                    5. Khi quá trình nén hoàn tất, nút "Tải ảnh nén về" sẽ xuất
+                    hiện. Nhấn vào nút này để tải ảnh đã nén về.
+                </p>
+                <p>
+                    <strong>Lưu ý:</strong> Nếu bạn cần nén ảnh dưới một mức
+                    dung lượng nhất định (ví dụ: dưới 1 MB để đặt ảnh đại diện),
+                    hãy nhập số KB tương ứng vào ô kích thước mong muốn (1 MB =
+                    1024 KB).
+                </p>
+                <p>
+                    <strong>Giải thích:</strong> Việc nén ảnh để đạt chính xác
+                    kích thước mong muốn có thể khó khăn vì nhiều yếu tố như
+                    chất lượng gốc của ảnh, độ phức tạp của ảnh, và giới hạn của
+                    thuật toán nén. Thuật toán sẽ cố gắng giảm kích thước bằng
+                    cách giảm chất lượng ảnh, nhưng không phải lúc nào cũng đạt
+                    được kích thước mục tiêu một cách chính xác. Để đảm bảo ảnh
+                    phù hợp với yêu cầu, bạn có thể thử nén với các kích thước
+                    khác nhau cho đến khi đạt kết quả mong muốn.
+                </p>
+            </div>
+        </div>
+
+        <script>
+            let selectedFile;
+            let compressedFile;
+
+            document
+                .getElementById("fileInput")
+                .addEventListener("change", function (event) {
+                    selectedFile = event.target.files[0];
+                });
+
+            function updateProgressBar(value) {
+                const progressBar = document.getElementById("progressBar");
+                progressBar.style.width = value + "%";
+                progressBar.innerText = value + "%";
+            }
+
+            async function compressImage() {
+                const desiredSize =
+                    document.getElementById("desiredSize").value;
+                if (!selectedFile) {
+                    document.getElementById("error").innerText =
+                        "Vui lòng chọn một ảnh.";
+                    return;
+                }
+                if (!desiredSize) {
+                    document.getElementById("error").innerText =
+                        "Vui lòng nhập kích thước mong muốn.";
+                    return;
+                }
+
+                document.getElementById("error").innerText = "";
+                updateProgressBar(0);
+
+                try {
+                    let quality = 0.9;
+                    let desiredSizeBytes = desiredSize * 1024;
+
+                    while (true) {
+                        const options = {
+                            maxSizeMB: desiredSize / 1024,
+                            useWebWorker: true,
+                            initialQuality: quality,
+                        };
+
+                        compressedFile = await imageCompression(
+                            selectedFile,
+                            options
+                        );
+                        updateProgressBar(
+                            Math.min(
+                                (compressedFile.size / desiredSizeBytes) * 100,
+                                100
+                            )
+                        );
+
+                        if (
+                            compressedFile.size <= desiredSizeBytes ||
+                            quality <= 0.1
+                        )
+                            break;
+                        quality -= 0.1;
+                    }
+
+                    updateProgressBar(100);
+                    document.getElementById("downloadButton").style.display =
+                        "block";
+                } catch (error) {
+                    document.getElementById("error").innerText =
+                        "Có lỗi xảy ra khi nén ảnh.";
+                }
+            }
+
+            function downloadImage() {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(compressedFile);
+                link.download = "compressed_image.jpg";
+                link.click();
+            }
+        </script>
+    </body>
+</html>
